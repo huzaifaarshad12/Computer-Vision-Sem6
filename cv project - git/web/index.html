@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fire & Smoke Vision System</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: "#F4F0E9",
+            card: "#FFFFFF",
+            ink: "#1A1916",
+            muted: "#74716A",
+            line: "#E6DFD3",
+            clay: "#CC785C",
+            clayhover: "#B5603F",
+            forest: "#3D7A5A",
+            ember: "#C0492F",
+          },
+          fontFamily: {
+            serif: ['Georgia', '"Times New Roman"', 'serif'],
+            sans: ['ui-sans-serif', 'system-ui', '"Segoe UI"', 'Inter', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { background: #F4F0E9; }
+    .fade-in { animation: fade .4s ease both; }
+    @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .spin { animation: sp 1s linear infinite; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="font-sans text-ink">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function StatusPill({ ok, label }) {
+      return (
+        <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border"
+              style={{ borderColor: "#E6DFD3", background: ok ? "#EEF5F0" : "#F6EFEa" }}>
+          <span className="w-1.5 h-1.5 rounded-full"
+                style={{ background: ok ? "#3D7A5A" : "#C0492F" }}></span>
+          {label}
+        </span>
+      );
+    }
+
+    function Card({ title, badge, children }) {
+      return (
+        <div className="bg-card border border-line rounded-2xl p-5 shadow-sm fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-serif text-lg">{title}</h3>
+            {badge}
+          </div>
+          {children}
+        </div>
+      );
+    }
+
+    function Bar({ label, value, color }) {
+      return (
+        <div className="mb-3">
+          <div className="flex justify-between text-sm mb-1">
+            <span className="text-muted">{label}</span>
+            <span className="font-medium">{value}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-line overflow-hidden">
+            <div className="h-full rounded-full transition-all"
+                 style={{ width: value + "%", background: color }}></div>
+          </div>
+        </div>
+      );
+    }
+
+    const MODULES = [
+      { key: "classify", label: "Classify", need: "classifier" },
+      { key: "detect", label: "Detect", need: "detector" },
+      { key: "segment", label: "Segment + Severity", need: "segmenter" },
+      { key: "explain", label: "Explain", need: "classifier" },
+    ];
+
+    function App() {
+      const [status, setStatus] = useState(null);
+      const [file, setFile] = useState(null);
+      const [preview, setPreview] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState(null);
+      const [selected, setSelected] = useState(["classify", "detect", "segment", "explain"]);
+      const inputRef = useRef();
+
+      function toggle(key) {
+        setSelected((s) => s.includes(key) ? s.filter((k) => k !== key) : [...s, key]);
+      }
+      function available(m) { return !status || status[m.need]; }
+
+      useEffect(() => {
+        fetch("/api/status").then(r => r.json()).then(setStatus).catch(() => {});
+      }, []);
+
+      function pick(f) {
+        if (!f) return;
+        setFile(f);
+        setResult(null);
+        setError(null);
+        setPreview(URL.createObjectURL(f));
+      }
+
+      async function analyze() {
+        if (!file) return;
+        setLoading(true); setError(null); setResult(null);
+        try {
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("modules", selected.join(","));
+          const r = await fetch("/api/analyze", { method: "POST", body: fd });
+          if (!r.ok) throw new Error("Server error " + r.status);
+          setResult(await r.json());
+        } catch (e) {
+          setError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // threat = ANY run module signals fire/smoke (so the verdict is correct
+      // even when classification wasn't one of the selected modules)
+      const isFire = !!result && (
+        (result.classify && result.classify.label === "fire_smoke") ||
+        (result.gradcam && result.gradcam.label === "fire_smoke") ||
+        (result.detect && result.detect.count > 0) ||
+        (result.segment && result.segment.count > 0)
+      );
+      const sev = result && result.segment ? result.segment.severity : null;
+
+      return (
+        <div className="min-h-screen">
+          {/* top bar */}
+          <header className="border-b border-line bg-canvas/80 backdrop-blur sticky top-0 z-10">
+            <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                     style={{ background: "#CC785C" }}>
+                  <span style={{ fontSize: 15 }}>🔥</span>
+                </div>
+                <span className="font-serif text-lg">Fire &amp; Smoke Vision</span>
+              </div>
+              {status && (
+                <div className="hidden sm:flex gap-2">
+                  <StatusPill ok={status.classifier} label="Classifier" />
+                  <StatusPill ok={status.detector} label="Detector" />
+                  <StatusPill ok={status.segmenter} label="Segmenter" />
+                </div>
+              )}
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto px-6 py-10">
+            {/* hero */}
+            <div className="max-w-2xl">
+              <h1 className="font-serif text-4xl sm:text-5xl leading-tight mb-4">
+                Detect, locate &amp; assess fire from a single image.
+              </h1>
+              <p className="text-muted text-lg leading-relaxed">
+                A multi-module computer-vision system — classification, object detection,
+                segmentation, explainability and a severity score — in one place.
+              </p>
+            </div>
+
+            {/* upload */}
+            <div className="mt-8 bg-card border border-line rounded-2xl p-5">
+              <div
+                onClick={() => inputRef.current.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files[0]); }}
+                className="cursor-pointer border-2 border-dashed border-line rounded-xl p-6 flex items-center gap-4 hover:border-clay transition">
+                {preview
+                  ? <img src={preview} className="w-20 h-20 object-cover rounded-lg" />
+                  : <div className="w-20 h-20 rounded-lg bg-canvas flex items-center justify-center text-2xl">🖼️</div>}
+                <div>
+                  <div className="font-medium">{file ? file.name : "Drop an image or click to browse"}</div>
+                  <div className="text-sm text-muted">JPG or PNG · analysed locally on your machine</div>
+                </div>
+                <input ref={inputRef} type="file" accept="image/*" className="hidden"
+                       onChange={(e) => pick(e.target.files[0])} />
+              </div>
+
+              {/* module selector */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted mr-1">Run:</span>
+                {MODULES.map((m) => {
+                  const on = selected.includes(m.key);
+                  const dis = !available(m);
+                  return (
+                    <button key={m.key} disabled={dis}
+                      onClick={() => toggle(m.key)}
+                      className="text-sm px-3 py-1.5 rounded-full border transition disabled:opacity-35 disabled:cursor-not-allowed"
+                      style={{
+                        borderColor: on ? "#CC785C" : "#E6DFD3",
+                        background: on ? "#F6E9E2" : "#FFFFFF",
+                        color: on ? "#B5603F" : "#74716A",
+                      }}>
+                      {on ? "✓ " : ""}{m.label}
+                    </button>
+                  );
+                })}
+                <div className="flex gap-2 ml-1">
+                  <button onClick={() => setSelected(MODULES.filter(available).map((m) => m.key))}
+                    className="text-xs px-2.5 py-1.5 rounded-full text-muted hover:text-ink transition">All</button>
+                  <button onClick={() => setSelected([])}
+                    className="text-xs px-2.5 py-1.5 rounded-full text-muted hover:text-ink transition">None</button>
+                </div>
+                <div className="flex-1"></div>
+                <button onClick={analyze} disabled={!file || loading || selected.length === 0}
+                  className="px-6 py-3 rounded-xl text-white font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: "#CC785C" }}
+                  onMouseOver={(e) => !e.target.disabled && (e.target.style.background = "#B5603F")}
+                  onMouseOut={(e) => (e.target.style.background = "#CC785C")}>
+                  {loading ? "Analysing…"
+                    : selected.length === 4 ? "Analyse image"
+                    : "Run " + selected.length + " module" + (selected.length === 1 ? "" : "s")}
+                </button>
+              </div>
+            </div>
+
+            {error && <p className="mt-4 text-ember">⚠ {error}</p>}
+
+            {loading && (
+              <div className="mt-16 flex flex-col items-center text-muted">
+                <div className="w-8 h-8 border-2 border-line rounded-full spin"
+                     style={{ borderTopColor: "#CC785C" }}></div>
+                <p className="mt-3">
+                  Running {selected.map((k) => MODULES.find((m) => m.key === k).label).join(", ")}…
+                </p>
+              </div>
+            )}
+
+            {/* results */}
+            {result && (
+              <div className="mt-10 space-y-6">
+                {/* verdict */}
+                <div className="rounded-2xl p-6 fade-in border"
+                     style={{ background: isFire ? "#FBEDEA" : "#EDF5F0",
+                              borderColor: isFire ? "#E7C3BA" : "#C6E0D2" }}>
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm text-muted mb-1">Verdict</div>
+                      <div className="font-serif text-2xl"
+                           style={{ color: isFire ? "#C0492F" : "#3D7A5A" }}>
+                        {isFire ? "🚨 Fire / Smoke Detected" : "✅ All Clear — No Threat"}
+                      </div>
+                    </div>
+                    {result.classify && (
+                      <div className="text-right">
+                        <div className="text-sm text-muted">Confidence</div>
+                        <div className="text-2xl font-medium">{result.classify.confidence}%</div>
+                      </div>
+                    )}
+                    {sev && (
+                      <div className="text-right">
+                        <div className="text-sm text-muted">Severity</div>
+                        <div className="text-2xl font-medium" style={{ color: sev.color }}>
+                          {sev.level}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* classification */}
+                  {result.classify && (
+                    <Card title="Classification"
+                          badge={<span className="text-xs text-muted">Module 1 · ResNet18</span>}>
+                      <img src={result.input} className="w-full rounded-xl mb-4" />
+                      <Bar label="fire / smoke" value={result.classify.probs.fire_smoke} color="#C0492F" />
+                      <Bar label="normal" value={result.classify.probs.normal} color="#3D7A5A" />
+                    </Card>
+                  )}
+
+                  {/* detection */}
+                  {result.detect && (
+                    <Card title="Detection"
+                          badge={<span className="text-xs text-muted">Module 2 · YOLOv8</span>}>
+                      <img src={result.detect.image} className="w-full rounded-xl" />
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {result.detect.count === 0
+                          ? <span className="text-sm text-forest">No fire / smoke regions found.</span>
+                          : result.detect.detections.map((d, i) => (
+                            <span key={i} className="text-xs px-2.5 py-1 rounded-full border border-line bg-canvas">
+                              {d.label} · {d.confidence}%
+                            </span>
+                          ))}
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* segmentation */}
+                  {result.segment && (
+                    <Card title="Segmentation + Severity"
+                          badge={<span className="text-xs text-muted">Module 3 &amp; 5</span>}>
+                      <img src={result.segment.image} className="w-full rounded-xl" />
+                      <div className="mt-4">
+                        <Bar label={"Frame covered · " + result.segment.severity.level}
+                             value={result.segment.severity.percent}
+                             color={result.segment.severity.color} />
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {Object.entries(result.segment.per_class).map(([k, v]) => (
+                            <span key={k} className="text-xs px-2.5 py-1 rounded-full border border-line bg-canvas">
+                              {k}: {v}%
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* explainability */}
+                  {result.gradcam && (
+                    <Card title="Explainability (Grad-CAM)"
+                          badge={<span className="text-xs text-muted">Module 4</span>}>
+                      <img src={result.gradcam.image} className="w-full rounded-xl" />
+                      <p className="text-sm text-muted mt-3">
+                        Warm areas show the pixels that drove the model's decision.
+                      </p>
+                    </Card>
+                  )}
+                </div>
+              </div>
+            )}
+          </main>
+
+          <footer className="max-w-6xl mx-auto px-6 py-10 text-sm text-muted border-t border-line mt-10">
+            Fire &amp; Smoke Vision System · Classification · Detection · Segmentation · Explainability · Severity
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

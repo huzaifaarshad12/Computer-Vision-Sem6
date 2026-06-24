@@ -1,0 +1,11 @@
+Overall accuracy: 99.00%
+
+              precision    recall  f1-score   support
+
+  fire_smoke     0.9884    0.9971    0.9927       341
+      normal     0.9936    0.9748    0.9841       159
+
+    accuracy                         0.9900       500
+   macro avg     0.9910    0.9860    0.9884       500
+weighted avg     0.9900    0.9900    0.9900       500
+

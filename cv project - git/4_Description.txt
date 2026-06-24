@@ -1,0 +1,34 @@
+4 - DESCRIPTION
+
+The Fire & Smoke Vision System is a multi-module computer-vision project that
+detects and analyses fire and smoke in images. Rather than stopping at a single
+yes/no classifier, it combines six complementary modules into one pipeline, each
+answering a different question about the same image:
+
+1. Classification - Is there fire/smoke? A ResNet18 (transfer learning) labels
+   the image as fire_smoke or normal and reports a confidence score.
+
+2. Detection - Where is it? A YOLOv8 model draws bounding boxes around each fire
+   and smoke region.
+
+3. Segmentation - Exactly which pixels? A YOLOv8-seg model produces pixel-level
+   masks of fire and smoke.
+
+4. Explainability (Grad-CAM) - Why did the model decide "fire"? A heatmap
+   highlights the regions that drove the classifier's decision, confirming it
+   attends to actual flame/smoke rather than background.
+
+5. Severity Score - How serious is it? The fraction of the frame covered by the
+   segmentation masks is mapped to a rating: NONE / LOW / MEDIUM / HIGH /
+   CRITICAL.
+
+6. Evaluation Dashboard - confusion matrix, per-class precision/recall/F1, and
+   mAP, used to validate every model on a held-out test split.
+
+A key design choice is that all six modules are trained from a single annotated
+dataset: one converter turns the original polygon annotations into every format
+the project needs (classification folders, detection boxes, and segmentation
+masks), so all modules share one consistent source of truth. The system is
+image-based, with the deep-learning models trained on Google Colab (free GPU)
+and served through a lightweight web interface where the user can upload an image
+and choose which modules to run.

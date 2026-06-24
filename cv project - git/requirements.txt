@@ -1,0 +1,26 @@
+# ===== Fire & Smoke Vision System - dependencies =====
+# Core deep learning
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Detection + Segmentation (YOLOv8)
+ultralytics>=8.1.0
+
+# Image / data
+Pillow>=9.0.0
+numpy>=1.23.0
+opencv-python>=4.7.0
+
+# Metrics, plots, evaluation dashboard
+scikit-learn>=1.2.0
+matplotlib>=3.6.0
+seaborn>=0.12.0
+
+# Web UI — React frontend + FastAPI backend
+fastapi>=0.110.0
+uvicorn>=0.27.0
+python-multipart>=0.0.9
+
+# Notebook / progress
+tqdm>=4.64.0
+PyYAML>=6.0

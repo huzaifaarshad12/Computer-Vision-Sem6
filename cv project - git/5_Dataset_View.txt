@@ -1,0 +1,26 @@
+5 - DATASET VIEW
+
+The project uses the Fire-Segmentation-Dataset, a collection of real-world fire
+and smoke imagery with polygon-level annotations in LabelMe JSON format.
+
+OVERVIEW
+- Total images:      5,000
+- Annotated images:  3,203 (the remaining images act as negative/normal examples)
+- Annotation type:   LabelMe polygons (each polygon outlines a fire or smoke region)
+- Object classes:    2 - fire and smoke
+- Instance counts:   fire = 7,802 instances  |  smoke = 3,460 instances
+
+HOW THE DATA IS USED
+A single converter transforms each polygon annotation into three training
+formats simultaneously:
+- Classification - an image with any annotation becomes fire_smoke, otherwise normal.
+- Detection      - each polygon is reduced to its bounding box (YOLO format).
+- Segmentation   - each polygon is kept as a normalised point list (YOLO-seg format).
+This guarantees that all modules are trained and evaluated on the exact same
+images and labels.
+
+TRAIN / VALIDATION / TEST SPLIT
+The data is divided 80% train / 10% validation / 10% test using a fixed random
+seed (42), making the split fully reproducible. The 10% test portion (about 500
+images) is never seen during training and is reserved for final, unbiased
+evaluation of every model.
