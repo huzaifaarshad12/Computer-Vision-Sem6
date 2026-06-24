@@ -1,0 +1,10 @@
+torch
+numpy
+opencv-python
+scipy
+gradio
+segmentation-models-pytorch   # trained U-Net (loads unet_skindisnet.pt)
+git+https://github.com/facebookresearch/segment-anything.git
+# Optional "fast mode" model (MobileSAM, ~1-3s on CPU):
+timm
+git+https://github.com/ChaoningZhang/MobileSAM.git
