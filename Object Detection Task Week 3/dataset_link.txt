@@ -1,0 +1,31 @@
+============================================================
+  COMPUTER VISION ASSIGNMENT — SKIN DISEASE CLASSIFICATION
+============================================================
+
+DATASET LINK:
+https://data.mendeley.com/datasets/yj3md44hxg/2
+
+RESEARCH PAPER LINK (Data in Brief — Elsevier / ScienceDirect):
+https://www.sciencedirect.com/science/article/pii/S2352340925009606
+
+PAPER CITATION:
+Sultana, M., Sajib, R.H., Badhan, I.A., Ahmed, M., & Bushra, M.Y. (2025).
+SkinDisNet: A comprehensive dataset of clinical images and metadata for
+skin disease detection and classification.
+Data in Brief, 63, 112239.
+DOI: 10.1016/j.dib.2025.112239
+
+DATASET DETAILS:
+- Dataset Name   : SkinDisNet
+- Version        : 2 (Published: 26 June 2025)
+- Total Images   : 1,710 (Preprocessed) + 11,970 (Augmented)
+- Image Size     : 512 x 512 pixels (JPG)
+- Number of Classes : 6
+- Classes        : Atopic Dermatitis, Contact Dermatitis, Eczema,
+                   Scabies, Seborrheic Dermatitis, Tinea Corporis
+- License        : CC BY-NC 4.0
+
+FOLDER USED IN THIS ASSIGNMENT:
+Preprocessed/ (1,710 original clinical images across 6 class folders)
+
+============================================================

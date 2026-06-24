@@ -1,0 +1,35 @@
+SKIN DISEASE OBJECT DETECTION - APPROACH & TOOLS
+=====================================================
+
+TASK
+----
+Detect (localize + classify) skin-disease lesions in clinical images, drawing a
+bounding box and predicted disease class on each image.
+
+APPROACH (weakly-supervised detection via Grad-CAM)
+---------------------------------------------------
+The dataset provides only image-level class labels (one disease label per image) and
+NO bounding-box annotations. Standard supervised object detectors (YOLO, Faster R-CNN)
+cannot be trained without boxes, so a weakly-supervised localization approach was used:
+
+1. Train an EfficientNetB0 image classifier (transfer learning from ImageNet) on the
+   skin-disease classes.
+2. For each test image, run Grad-CAM (Gradient-weighted Class Activation Mapping) on
+   the last convolutional layer to produce a heatmap of the regions the model used to
+   make its prediction - i.e. the lesion area.
+3. Convert the heatmap into a bounding box by thresholding it and taking the largest
+   connected region (OpenCV contour detection).
+4. Draw the bounding box, predicted disease class, and confidence on the image.
+
+This yields object-detection-style outputs (box + label + confidence) directly from a
+classifier, without any manual annotation.
+
+TOOLS USED
+----------
+- Python 3, Google Colab (T4 GPU)
+- TensorFlow / Keras  - EfficientNetB0 classifier (transfer learning)
+- Grad-CAM            - lesion localization from classifier gradients
+- OpenCV (cv2)        - heatmap thresholding and bounding-box extraction
+- NumPy, Matplotlib   - array handling and rendering the annotated images
+
+
